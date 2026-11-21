@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6366f1">
+  <title>Gemini + Notion Voice Assistant</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <!-- PIN Lock Screen Overlay (shown only when APP_ACCESS_PIN is enabled) -->
+  <div id="pinOverlay" class="pin-overlay">
+    <div class="pin-card">
+      <div style="font-size:2.2rem;">🔒</div>
+      <h2>Enter Access PIN</h2>
+      <p class="subtitle">Protected Notion Voice Assistant</p>
+      <input
+        type="password"
+        id="pinInput"
+        class="text-input"
+        placeholder="Enter PIN..."
+        style="text-align:center;letter-spacing:0.2em;font-size:1.1rem;"
+        onkeydown="if(event.key==='Enter') submitPin()"
+      />
+      <button class="submit-btn" style="padding:0.75rem;" onclick="submitPin()">Unlock</button>
+      <div id="pinError" class="pin-error"></div>
+    </div>
+  </div>
+
+  <div class="container">
+    <header>
+      <div class="status-row">
+        <div id="geminiBadge" class="badge mock">
+          <span class="pulse-dot"></span> Checking Gemini...
+        </div>
+        <div id="notionBadge" class="badge mock">
+          <span class="pulse-dot"></span> Checking Notion...
+        </div>
+        <button id="lockBtn" class="pill-btn" style="display:none;" onclick="lockApp()" title="Lock app">🔒 Lock</button>
+      </div>
+      <h1>✨ Gemini + Notion Voice</h1>
+      <p class="subtitle">Manage your Shopping List, To-Do List, and Notes hands-free</p>
+    </header>
+
+    <!-- Voice Interaction Card -->
+    <div class="card voice-hero">
+      <div class="mic-btn-wrapper">
+        <button id="micBtn" class="mic-btn" onclick="toggleListening()" title="Tap to speak">🎙️</button>
+        <div class="mic-waves"></div>
+      </div>
+      <div id="voiceStatusText" class="voice-status-text">Tap the mic and talk naturally</div>
+
+      <div id="voiceResponseBubble" class="voice-response-bubble" style="display: none;">
+        <div class="response-main">
+          <span>🔊</span>
+          <span id="responseText">Thinking...</span>
+        </div>
+        <div id="actionsPills" class="actions-pills"></div>
+      </div>
+
+      <!-- Sample multi-list & AI voice commands -->
+      <div class="quick-pills">
+        <button class="pill-btn" onclick="sendPreset('Add avocados and almond milk to my shopping list')">
+          🛒 Add groceries
+        </button>
+        <button class="pill-btn" onclick="sendPreset('What is currently on my shopping list?')">
+          📋 Read shopping list
+        </button>
+        <button class="pill-btn" onclick="sendPreset('Tell me any two items on my shopping list')">
+          🎲 Any 2 items
+        </button>
+        <button class="pill-btn" onclick="sendPreset('Add a high priority to-do to book dentist tomorrow')">
+          ✅ Add To-Do
+        </button>
+        <button class="pill-btn" onclick="sendPreset('What is on my to-do list?')">
+          📌 Read To-Dos
+        </button>
+        <button class="pill-btn" onclick="sendPreset('Mark pay rent as done on my to-do list')">
+          ✓ Finish task
+        </button>
+        <button class="pill-btn" onclick="sendPreset('Search my notes for pasta')">
+          🔍 Search notes
+        </button>
+      </div>
+
+      <div class="input-group">
+        <input
+          type="text"
+          id="textInput"
+          class="text-input"
+          placeholder="Or type anything: 'Add milk to shopping and call mom to to-do'..."
+          onkeydown="handleInputKey(event)"
+        />
+        <button class="submit-btn" onclick="sendTextCommand()">Send</button>
+      </div>
+    </div>
+
+    <!-- Multi-Database Live Notion Workspace Card -->
+    <div class="card">
+      <div class="db-header">
+        <div id="dbTabsContainer" class="db-tabs"></div>
+        <div style="display:flex;gap:0.4rem;">
+          <button class="pill-btn" onclick="fetchDatabases(true)" title="Refresh Notion">↻ Sync</button>
+          <button class="pill-btn" onclick="resetMemory()" title="Clear chat memory">🧹 New Chat</button>
+        </div>
+      </div>
+      <div id="itemsContainer" class="items-list"></div>
+    </div>
+
+    <!-- Setup Guides -->
+    <div class="card">
+      <div class="tabs">
+        <button id="tab-btn-gemini" class="tab-btn active" onclick="switchTab('gemini')">✨ 1. Gemini API</button>
+        <button id="tab-btn-notion" class="tab-btn" onclick="switchTab('notion')">📦 2. Notion</button>
+        <button id="tab-btn-android" class="tab-btn" onclick="switchTab('android')">📱 3. Android Voice</button>
+      </div>
+
+      <div id="tab-content-gemini" class="tab-content">
+        <div class="guide-step">
+          <strong>1. Get a Free Gemini API Key:</strong><br>
+          Go to <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#a5b4fc;">aistudio.google.com/apikey</a> and click <strong>Create API Key</strong>.
+        </div>
+        <div class="guide-step">
+          <strong>2. Add to your <code>.env</code> file:</strong>
+          <div class="code-box">GEMINI_API_KEY=your_gemini_api_key_here<br>GEMINI_MODEL=gemini-2.5-flash</div>
+        </div>
+        <div class="guide-step">
+          With Gemini enabled, you can speak completely naturally, combine multiple Notion updates in one sentence, and ask follow-up questions like <em>"Mark the first one as done"</em>.
+        </div>
+      </div>
+
+      <div id="tab-content-notion" class="tab-content" style="display:none;">
+        <div class="guide-step">
+          <strong>1. Create Notion Integration:</strong><br>
+          Go to <a href="https://www.notion.so/my-integrations" target="_blank" style="color:#a5b4fc;">notion.so/my-integrations</a>, create an Internal integration, and copy the secret token.
+        </div>
+        <div class="guide-step">
+          <strong>2. Share ANY Databases with It:</strong><br>
+          Open your <strong>Shopping List</strong>, <strong>To-Do List</strong>, <strong>Quick Notes</strong> (or any other Notion table), tap <code>•••</code> &gt; <strong>Connections</strong> &gt; add your integration. Gemini automatically discovers all shared databases!
+        </div>
+        <div class="guide-step">
+          <strong>3. Add to <code>.env</code>:</strong>
+          <div class="code-box">NOTION_API_KEY=ntn_your_notion_secret_here</div>
+        </div>
+      </div>
+
+      <div id="tab-content-android" class="tab-content" style="display:none;">
+        <div class="guide-step">
+          <strong>Option 1 — 1-Tap Voice App (Fastest):</strong><br>
+          Open this URL in Chrome on Android &gt; tap <code>⋮</code> &gt; <strong>Add to Home screen</strong>. Tap it anytime (or say <em>"Hey Google, open Notion Voice"</em>) and speak!
+        </div>
+        <div class="guide-step">
+          <strong>Option 2 — Hands-Free MacroDroid Bridge:</strong><br>
+          Create a MacroDroid shortcut that records voice input, sends HTTP <code>POST</code> to:
+          <div class="code-box">https://YOUR-DOMAIN/api/voice</div>
+          Body: <code>{"command": "{v=voice_command}"}</code>, and speaks back <code>speech</code> via Android Text-to-Speech.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
